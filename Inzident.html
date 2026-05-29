@@ -1,0 +1,585 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>Тренажёр: инцидент или авария</title>
+    <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            background: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            margin: 0;
+            padding: 16px;
+        }
+
+        /* контейнер с возможностью прокрутки, чтобы всё поместилось */
+        .trainer {
+            width: 600px;
+            height: 650px;
+            background: white;
+            border-radius: 36px;
+            box-shadow: 0 20px 35px -12px rgba(0, 0, 0, 0.15);
+            padding: 22px 24px 28px 24px;
+            border: 1px solid #e2edf7;
+            overflow-y: auto;   /* прокрутка, чтобы все кнопки и обратная связь были видны */
+            overflow-x: hidden;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* кастомный скролл, аккуратный */
+        .trainer::-webkit-scrollbar {
+            width: 5px;
+        }
+        .trainer::-webkit-scrollbar-track {
+            background: #f0f4fa;
+            border-radius: 10px;
+        }
+        .trainer::-webkit-scrollbar-thumb {
+            background: #b9d3f0;
+            border-radius: 10px;
+        }
+
+        .content-wrapper {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+        }
+
+        h1 {
+            font-size: 1.55rem;
+            font-weight: 700;
+            color: #0a4b8a;
+            margin-bottom: 6px;
+            letter-spacing: -0.3px;
+            border-left: 5px solid #1e88e5;
+            padding-left: 16px;
+        }
+
+        .sub {
+            color: #2c6280;
+            font-size: 0.8rem;
+            margin-bottom: 16px;
+            border-bottom: 1px solid #e2edf7;
+            padding-bottom: 10px;
+        }
+
+        .event-card {
+            background: #f8fbfe;
+            border-radius: 24px;
+            padding: 14px 16px;
+            margin-bottom: 18px;
+            border: 1px solid #d4e5f5;
+        }
+
+        .event-title {
+            font-weight: 700;
+            color: #0b5e9e;
+            font-size: 0.95rem;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        .event-title:before {
+            content: "⚠️";
+            font-size: 1rem;
+        }
+
+        .event-text {
+            background: #eef4fc;
+            padding: 10px 14px;
+            border-radius: 18px;
+            font-size: 0.88rem;
+            line-height: 1.4;
+            color: #014175;
+            font-weight: 500;
+        }
+
+        .page-indicator {
+            background: #dbeafe;
+            padding: 4px 12px;
+            border-radius: 30px;
+            display: inline-block;
+            font-size: 0.7rem;
+            font-weight: bold;
+            color: #0f5b9c;
+            margin-bottom: 16px;
+        }
+
+        .question-title {
+            font-weight: 700;
+            font-size: 1rem;
+            color: #0f5b9c;
+            background: #e4f0fe;
+            display: inline-block;
+            padding: 5px 14px;
+            border-radius: 40px;
+            margin-bottom: 16px;
+        }
+
+        .two-columns {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px 16px;
+            margin-bottom: 18px;
+        }
+
+        .option-item {
+            background: #f4faff;
+            border-radius: 60px;
+            padding: 6px 12px 6px 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            cursor: pointer;
+            transition: 0.15s;
+            border: 1px solid #cde0f2;
+        }
+        .option-item:hover {
+            background: #e3f0fe;
+            border-color: #6ea8fe;
+        }
+        .option-item input {
+            width: 16px;
+            height: 16px;
+            cursor: pointer;
+            accent-color: #1a73e8;
+            flex-shrink: 0;
+        }
+        .option-item label {
+            font-size: 0.8rem;
+            color: #014175;
+            font-weight: 500;
+            cursor: pointer;
+            line-height: 1.3;
+        }
+
+        .option-item.correct-highlight {
+            background: #d4edda;
+            border-color: #2b7e3a;
+        }
+        .option-item.wrong-highlight {
+            background: #f8d7da;
+            border-color: #c94f4f;
+        }
+
+        .options-vertical {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-bottom: 18px;
+        }
+
+        .feedback {
+            background: #e9f2fa;
+            border-left: 5px solid #1e6dc7;
+            padding: 10px 14px;
+            border-radius: 18px;
+            margin: 12px 0 12px;
+            font-size: 0.8rem;
+            color: #014175;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        .btn-group {
+            display: flex;
+            gap: 12px;
+            margin-top: 8px;
+            margin-bottom: 8px;
+            flex-wrap: wrap;
+            justify-content: space-between;
+        }
+
+        .btn {
+            background: #1565c0;
+            border: none;
+            color: white;
+            padding: 6px 18px;
+            border-radius: 40px;
+            font-weight: 600;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: 0.2s;
+        }
+        .btn-secondary {
+            background: #5a8fbf;
+        }
+        .btn-secondary:hover {
+            background: #3c6f9e;
+        }
+        .btn:hover {
+            background: #0d47a1;
+            transform: scale(0.97);
+        }
+        .btn:disabled {
+            background: #b2c9e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .reset-all {
+            background: #2c7be0;
+            width: 100%;
+            margin-top: 10px;
+            background: #266bb0;
+        }
+
+        hr {
+            margin: 12px 0 10px;
+            border: 0;
+            height: 1px;
+            background: #e2edf7;
+        }
+
+        .page {
+            display: flex;
+            flex-direction: column;
+        }
+        .hidden-page {
+            display: none;
+        }
+    </style>
+</head>
+<body>
+<div class="trainer">
+    <h1>🧠 Граница: ИНЦИДЕНТ / АВАРИЯ</h1>
+    <div class="sub">Опасный производственный объект • Газ, компрессорная станция</div>
+
+    <div class="content-wrapper">
+        <!-- СТРАНИЦА 1: описание -->
+        <div id="page1" class="page">
+            <div class="page-indicator">📌 СТРАНИЦА 1 • ИСХОДНАЯ СИТУАЦИЯ</div>
+            <div class="event-card">
+                <div class="event-title">Исходное событие (инцидент)</div>
+                <div class="event-text">
+                    📍 На компрессорной станции разрушился масляный фильтр — треснул корпус.<br>
+                    🛢️ Масло вылилось на пол (около 2 литров).<br>
+                    ⏹️ Оборудование остановлено.<br>
+                    👥 Люди целы.
+                </div>
+                <div style="font-size:0.7rem; margin-top: 12px; background:#eef3fc; padding: 6px 10px; border-radius: 16px;">
+                    🔍 На данный момент это <strong>инцидент</strong> (отказ оборудования без аварии, без тяжёлого вреда).<br>
+                    💡 Ваша задача: понять, какие факторы переводят ситуацию в <strong>аварию</strong>, а какое изменение — в <strong>рабочий момент</strong>.
+                </div>
+            </div>
+            <div class="btn-group" style="justify-content: flex-end;">
+                <button id="toPage2Btn" class="btn">➡️ Далее</button>
+            </div>
+        </div>
+
+        <!-- СТРАНИЦА 2: первый вопрос (множественный выбор, два столбца, перемешивание) -->
+        <div id="page2" class="page hidden-page">
+            <div class="page-indicator">📌 СТРАНИЦА 2 • ВОПРОС 1 (выберите всё верное)</div>
+            <div class="question-title">🔥 Какие ДОПОЛНИТЕЛЬНЫЕ факторы превращают событие в АВАРИЮ?</div>
+            <div id="optionsContainer" class="two-columns"></div>
+            <div id="feedbackPage2" class="feedback" style="display: none;"></div>
+            <div class="btn-group">
+                <button id="backToPage1Btn" class="btn btn-secondary">◀ Назад</button>
+                <button id="checkPage2Btn" class="btn">✅ Проверить</button>
+                <button id="nextToPage3Btn" class="btn" disabled>➡️ Далее</button>
+            </div>
+            <hr>
+            <button id="fullResetBtn2" class="btn reset-all" style="background:#417cb0;">🔄 Начать сначала</button>
+        </div>
+
+        <!-- СТРАНИЦА 3: второй вопрос (один правильный ответ) -->
+        <div id="page3" class="page hidden-page">
+            <div class="page-indicator">📌 СТРАНИЦА 3 • ВОПРОС 2 (финальный)</div>
+            <div class="question-title">🛠️ Что нужно изменить в описании, чтобы событие стало РАБОЧИМ МОМЕНТОМ (даже не инцидентом)?</div>
+            <div class="options-vertical" id="workOptionsContainer">
+                <div class="option-item" data-val="microleak">
+                    <input type="radio" name="workChoice" id="radioMicro" value="microleak">
+                    <label for="radioMicro">🔧 Заменить «разрушился масляный фильтр» на «выявлено подтекание масла через сальник (капля в минуту)» → микротечь, эксплуатационный недостаток</label>
+                </div>
+                <div class="option-item" data-val="tray">
+                    <input type="radio" name="workChoice" id="radioTray" value="tray">
+                    <label for="radioTray">🧴 «Масло вылилось на пол» заменить на «собрано в поддон, разлива нет»</label>
+                </div>
+                <div class="option-item" data-val="removeStop">
+                    <input type="radio" name="workChoice" id="radioStop" value="removeStop">
+                    <label for="radioStop">⏸️ Убрать фразу «оборудование остановлено», оставить работающим</label>
+                </div>
+            </div>
+            <div id="feedbackPage3" class="feedback" style="display: none;"></div>
+            <div class="btn-group">
+                <button id="backToPage2Btn" class="btn btn-secondary">◀ Назад</button>
+                <button id="checkPage3Btn" class="btn">✅ Проверить</button>
+                <button id="completeBtn" class="btn" disabled>🏁 Завершить</button>
+            </div>
+            <hr>
+            <button id="fullResetBtn3" class="btn reset-all" style="background:#417cb0;">🔄 Пройти заново</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    // ---------- ДАННЫЕ ДЛЯ ПЕРВОГО ВОПРОСА ----------
+    const allOptions = [
+        { id: "fire", text: "🔥 Масло попало на горячий выхлоп и загорелось → пожар на ОПО", isCorrect: true },
+        { id: "crack", text: "💥 Трещина возникла не на фильтре, а на корпусе компрессора под давлением 100 атм → разрушение основного оборудования", isCorrect: true },
+        { id: "leg", text: "🦵 Человек поскользнулся на масле и сломал ногу → тяжёлый вред здоровью", isCorrect: true },
+        { id: "wrongVibro", text: "📊 Кратковременное повышение вибрации насоса, быстро вернулось в норму (без последствий)", isCorrect: false },
+        { id: "wrongSignal", text: "🔔 Сработала звуковая сигнализация, оператор сбросил предупреждение — параметры в пределах регламента", isCorrect: false },
+        { id: "wrongClean", text: "🧹 Уборщица быстро вытерла масло, никто не пострадал, повреждений оборудования нет", isCorrect: false }
+    ];
+
+    function shuffleArray(arr) {
+        for (let i = arr.length - 1; i > 0; i--) {
+            const j = Math.floor(Math.random() * (i + 1));
+            [arr[i], arr[j]] = [arr[j], arr[i]];
+        }
+        return arr;
+    }
+
+    let shuffledOptions = [];
+    let page2CorrectSelected = false;
+    let page3CorrectSelected = false;
+
+    // DOM элементы
+    const page1 = document.getElementById('page1');
+    const page2 = document.getElementById('page2');
+    const page3 = document.getElementById('page3');
+    const optionsContainer = document.getElementById('optionsContainer');
+    const feedbackPage2 = document.getElementById('feedbackPage2');
+    const feedbackPage3 = document.getElementById('feedbackPage3');
+    const toPage2Btn = document.getElementById('toPage2Btn');
+    const backToPage1Btn = document.getElementById('backToPage1Btn');
+    const checkPage2Btn = document.getElementById('checkPage2Btn');
+    const nextToPage3Btn = document.getElementById('nextToPage3Btn');
+    const backToPage2Btn = document.getElementById('backToPage2Btn');
+    const checkPage3Btn = document.getElementById('checkPage3Btn');
+    const completeBtn = document.getElementById('completeBtn');
+    const fullResetBtn2 = document.getElementById('fullResetBtn2');
+    const fullResetBtn3 = document.getElementById('fullResetBtn3');
+
+    function clearHighlightsPage2() {
+        const items = document.querySelectorAll('#optionsContainer .option-item');
+        items.forEach(item => item.classList.remove('correct-highlight', 'wrong-highlight'));
+    }
+
+    function highlightPage2() {
+        clearHighlightsPage2();
+        const checkboxes = document.querySelectorAll('#optionsContainer input[type="checkbox"]');
+        checkboxes.forEach(cb => {
+            const parentDiv = cb.closest('.option-item');
+            if (parentDiv && cb.checked) {
+                const optValue = cb.value;
+                const isCorrect = allOptions.find(opt => opt.id === optValue)?.isCorrect || false;
+                parentDiv.classList.add(isCorrect ? 'correct-highlight' : 'wrong-highlight');
+            }
+        });
+    }
+
+    function clearHighlightPage3() {
+        const items = document.querySelectorAll('#workOptionsContainer .option-item');
+        items.forEach(item => item.classList.remove('correct-highlight', 'wrong-highlight'));
+    }
+
+    function highlightPage3() {
+        clearHighlightPage3();
+        const selectedRadio = document.querySelector('input[name="workChoice"]:checked');
+        if (!selectedRadio) return;
+        const parentDiv = selectedRadio.closest('.option-item');
+        if (!parentDiv) return;
+        const value = selectedRadio.value;
+        parentDiv.classList.add(value === 'microleak' ? 'correct-highlight' : 'wrong-highlight');
+    }
+
+    function renderPage2Options() {
+        shuffledOptions = shuffleArray([...allOptions]);
+        optionsContainer.innerHTML = '';
+        shuffledOptions.forEach(opt => {
+            const div = document.createElement('div');
+            div.className = 'option-item';
+            const cb = document.createElement('input');
+            cb.type = 'checkbox';
+            cb.value = opt.id;
+            cb.id = `cb_${opt.id}_${Math.random()}`;
+            const label = document.createElement('label');
+            label.htmlFor = cb.id;
+            label.textContent = opt.text;
+            div.appendChild(cb);
+            div.appendChild(label);
+            div.addEventListener('click', (e) => {
+                if (e.target.tagName !== 'INPUT') {
+                    cb.checked = !cb.checked;
+                    const ev = new Event('change', { bubbles: true });
+                    cb.dispatchEvent(ev);
+                }
+                clearHighlightsPage2();
+                feedbackPage2.style.display = 'none';
+                page2CorrectSelected = false;
+                nextToPage3Btn.disabled = true;
+            });
+            cb.addEventListener('change', () => {
+                clearHighlightsPage2();
+                feedbackPage2.style.display = 'none';
+                page2CorrectSelected = false;
+                nextToPage3Btn.disabled = true;
+            });
+            optionsContainer.appendChild(div);
+        });
+        page2CorrectSelected = false;
+        nextToPage3Btn.disabled = true;
+        feedbackPage2.style.display = 'none';
+        feedbackPage2.innerHTML = '';
+        clearHighlightsPage2();
+    }
+
+    function checkPage2() {
+        const checkboxes = document.querySelectorAll('#optionsContainer input[type="checkbox"]');
+        const selectedValues = [];
+        checkboxes.forEach(cb => { if (cb.checked) selectedValues.push(cb.value); });
+        const correctIds = allOptions.filter(opt => opt.isCorrect).map(opt => opt.id);
+        const selectedCorrect = selectedValues.filter(v => correctIds.includes(v));
+        const selectedWrong = selectedValues.filter(v => !correctIds.includes(v));
+        const missingCorrect = correctIds.filter(v => !selectedValues.includes(v));
+
+        let message = '';
+        let isPerfect = false;
+
+        if (selectedValues.length === 0) {
+            message = '❌ Вы ничего не выбрали. Чтобы событие стало аварией, нужно добавить пожар, разрушение компрессора или тяжёлую травму. Для перехода выберите ВСЕ три правильных варианта и ничего лишнего.';
+        } else {
+            const allCorrectSelected = (selectedCorrect.length === correctIds.length);
+            const noWrong = (selectedWrong.length === 0);
+            if (allCorrectSelected && noWrong) {
+                message = '🎉 Идеально! Вы выбрали ВСЕ правильные варианты (пожар, разрушение компрессора, тяжёлый вред здоровью) и не отметили лишних. Именно эти факторы переводят инцидент в АВАРИЮ. Теперь можно переходить ко второму вопросу.';
+                isPerfect = true;
+                page2CorrectSelected = true;
+                nextToPage3Btn.disabled = false;
+            } else {
+                page2CorrectSelected = false;
+                nextToPage3Btn.disabled = true;
+                let correctPart = selectedCorrect.length ? `✅ Верно: ${selectedCorrect.map(v => v==='fire'?'пожар':v==='crack'?'разрушение компрессора':'тяжёлый вред').join(', ')}. ` : '❌ Нет ни одного верного фактора. ';
+                let wrongPart = selectedWrong.length ? `⚠️ Лишние: ${selectedWrong.map(v => v==='wrongVibro'?'вибрация':v==='wrongSignal'?'сигнализация':'уборка масла').join(', ')}. ` : '';
+                let missingPart = missingCorrect.length ? `❗ Пропущены: ${missingCorrect.map(v => v==='fire'?'пожар':v==='crack'?'разрушение компрессора':'тяжёлая травма').join(', ')}. ` : '';
+                message = correctPart + wrongPart + missingPart + ' Необходимо выбрать ВСЕ три правильных и убрать лишние.';
+            }
+        }
+        feedbackPage2.style.display = 'block';
+        feedbackPage2.innerHTML = `<span style="font-weight:bold;">📣 Обратная связь:</span> ${message}`;
+        feedbackPage2.style.background = isPerfect ? "#e0f0e8" : "#e9f2fa";
+        feedbackPage2.style.borderLeftColor = isPerfect ? "#1e7e34" : "#1e6dc7";
+        highlightPage2();
+    }
+
+    function checkPage3() {
+        const selectedRadio = document.querySelector('input[name="workChoice"]:checked');
+        if (!selectedRadio) {
+            feedbackPage3.style.display = 'block';
+            feedbackPage3.innerHTML = `<span style="font-weight:bold;">📣 Обратная связь:</span> ❌ Выберите один из вариантов.`;
+            feedbackPage3.style.background = "#e9f2fa";
+            page3CorrectSelected = false;
+            completeBtn.disabled = true;
+            clearHighlightPage3();
+            return;
+        }
+        const value = selectedRadio.value;
+        let message = '';
+        let isRight = false;
+        if (value === 'microleak') {
+            message = '🎯 Совершенно верно! «Микротечь через сальник (капля в минуту)» — это эксплуатационный недостаток, а не отказ. Нет разлива, нет аварийной остановки. Событие становится РАБОЧИМ МОМЕНТОМ, а не инцидентом.';
+            isRight = true;
+            page3CorrectSelected = true;
+            completeBtn.disabled = false;
+        } else if (value === 'tray') {
+            message = '⚠️ Неверно. Даже если масло собрали в поддон, разлив уже произошёл (масло вылилось на пол по условию). Это всё ещё инцидент. Правильный ответ — замена «разрушился фильтр» на микротечь.';
+            page3CorrectSelected = false;
+            completeBtn.disabled = true;
+        } else if (value === 'removeStop') {
+            message = '⚠️ Неверно. Остановка оборудования не меняет суть: разрушение фильтра и разлив остаются инцидентом. Нужно убрать сам отказ (заменить на подтекание).';
+            page3CorrectSelected = false;
+            completeBtn.disabled = true;
+        }
+        feedbackPage3.style.display = 'block';
+        feedbackPage3.innerHTML = `<span style="font-weight:bold;">📣 Обратная связь:</span> ${message}`;
+        feedbackPage3.style.background = isRight ? "#e0f0e8" : "#ffe6e6";
+        feedbackPage3.style.borderLeftColor = isRight ? "#1e7e34" : "#c94f4f";
+        highlightPage3();
+    }
+
+    function fullReset() {
+        showPage(1);
+        renderPage2Options();
+        const radios = document.querySelectorAll('input[name="workChoice"]');
+        radios.forEach(r => r.checked = false);
+        feedbackPage2.style.display = 'none';
+        feedbackPage3.style.display = 'none';
+        page2CorrectSelected = false;
+        page3CorrectSelected = false;
+        nextToPage3Btn.disabled = true;
+        completeBtn.disabled = true;
+        clearHighlightPage3();
+        clearHighlightsPage2();
+    }
+
+    function showPage(pageNum) {
+        page1.classList.add('hidden-page');
+        page2.classList.add('hidden-page');
+        page3.classList.add('hidden-page');
+        if (pageNum === 1) page1.classList.remove('hidden-page');
+        if (pageNum === 2) page2.classList.remove('hidden-page');
+        if (pageNum === 3) page3.classList.remove('hidden-page');
+    }
+
+    // Обработчики
+    toPage2Btn.addEventListener('click', () => {
+        showPage(2);
+        renderPage2Options();
+        page2CorrectSelected = false;
+        nextToPage3Btn.disabled = true;
+        feedbackPage2.style.display = 'none';
+        clearHighlightsPage2();
+    });
+    backToPage1Btn.addEventListener('click', () => showPage(1));
+    backToPage2Btn.addEventListener('click', () => {
+        showPage(2);
+        clearHighlightPage3();
+    });
+    checkPage2Btn.addEventListener('click', checkPage2);
+    nextToPage3Btn.addEventListener('click', () => {
+        if (page2CorrectSelected) {
+            showPage(3);
+            feedbackPage3.style.display = 'none';
+            completeBtn.disabled = true;
+            page3CorrectSelected = false;
+            const radios = document.querySelectorAll('input[name="workChoice"]');
+            radios.forEach(r => r.checked = false);
+            clearHighlightPage3();
+        } else {
+            feedbackPage2.style.display = 'block';
+            feedbackPage2.innerHTML = `<span style="font-weight:bold;">📣 Обратная связь:</span> Сначала решите первый вопрос правильно: выберите все три верных фактора (пожар, разрушение компрессора, тяжёлая травма) и уберите лишние. Нажмите «Проверить» и убедитесь в успехе.`;
+            feedbackPage2.style.background = "#ffe6e6";
+        }
+    });
+    checkPage3Btn.addEventListener('click', checkPage3);
+    completeBtn.addEventListener('click', () => {
+        if (page3CorrectSelected) {
+            alert('🎉 Поздравляем! Вы успешно прошли тренажёр. Вы чётко различаете границы инцидента, аварии и рабочего момента. Настоящая культура безопасности начинается с внимания к деталям.');
+            fullReset();
+        } else {
+            feedbackPage3.style.display = 'block';
+            feedbackPage3.innerHTML = `<span style="font-weight:bold;">📣 Обратная связь:</span> Дайте правильный ответ на второй вопрос, чтобы завершить.`;
+        }
+    });
+    fullResetBtn2.addEventListener('click', fullReset);
+    fullResetBtn3.addEventListener('click', fullReset);
+
+    renderPage2Options();
+    showPage(1);
+</script>
+</body>
+</html>
