@@ -1,0 +1,716 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Диспетчер ОПО: Фиксация инцидента</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      user-select: none;
+    }
+    body {
+      background: white;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      margin: 0;
+      padding: 20px;
+      font-family: 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+    }
+    .dispatcher-card {
+      width: 600px;
+      min-height: 650px; /* минимальная высота, но может растягиваться, чтобы не было прокрутки */
+      background: white;
+      border-radius: 32px;
+      box-shadow: 0 20px 35px -12px rgba(0, 40, 80, 0.2);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      position: relative;
+      border: 1px solid #e0edff;
+    }
+    .header {
+      background: #0b3b5f;
+      padding: 12px 20px;
+      color: white;
+      text-align: center;
+      border-bottom: 3px solid #7bc5ff;
+    }
+    .header h2 {
+      margin: 0;
+      font-size: 1.35rem;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    .header p {
+      margin: 5px 0 0;
+      font-size: 0.7rem;
+      opacity: 0.85;
+    }
+    .level-tabs {
+      display: flex;
+      background: #ecf5fc;
+      border-bottom: 1px solid #bdd9ff;
+    }
+    .tab-btn {
+      flex: 1;
+      background: transparent;
+      border: none;
+      padding: 12px 0;
+      font-weight: bold;
+      font-size: 0.9rem;
+      cursor: pointer;
+      transition: 0.2s;
+      color: #0a4c6e;
+      font-family: inherit;
+      border-bottom: 3px solid transparent;
+    }
+    .tab-btn.active {
+      background: white;
+      color: #0077be;
+      border-bottom: 3px solid #0077be;
+    }
+    .tab-btn.completed {
+      background: #cbe5fe;
+      color: #005a8c;
+    }
+    .content-scroll {
+      padding: 18px 20px;
+      /* убираем прокрутку */
+      overflow: visible;
+      flex: none;
+    }
+    .level {
+      display: none;
+      animation: fadeIn 0.2s ease;
+    }
+    .level.active-level {
+      display: block;
+    }
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(5px);}
+      to { opacity: 1; transform: translateY(0);}
+    }
+    button {
+      background: #1976d2;
+      border: none;
+      color: white;
+      padding: 8px 16px;
+      border-radius: 40px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: 0.2s;
+      font-family: inherit;
+      font-size: 0.8rem;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    button:hover {
+      background: #0e5aa7;
+      transform: scale(0.97);
+    }
+    .message-feedback {
+      background: #eef4fc;
+      border-left: 5px solid #1e88e5;
+      padding: 10px 12px;
+      border-radius: 16px;
+      font-size: 0.8rem;
+      margin: 15px 0 10px;
+      color: #014175;
+    }
+    .click-word {
+      display: inline-block;
+      background: #f0f7fe;
+      padding: 2px 10px;
+      border-radius: 24px;
+      margin: 3px 3px;
+      cursor: pointer;
+      transition: 0.1s;
+      font-weight: 500;
+      font-size: 0.9rem;
+      border: 1px solid #bbd6ff;
+    }
+    .click-word.selected {
+      background: #2c7cd4;
+      color: white;
+      border-color: #0f5b92;
+    }
+    .click-word.trap {
+      background: #ffe0e0;
+      border-color: #ffaaaa;
+    }
+    .click-word.trap.selected {
+      background: #d32f2f;
+      color: white;
+      border-color: #b71c1c;
+    }
+    .badge {
+      background: #e3f0ff;
+      border-radius: 50px;
+      padding: 4px 10px;
+      font-size: 0.7rem;
+      font-weight: bold;
+      color: #0c6abf;
+      display: inline-block;
+    }
+    .flex-btns {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      margin: 10px 0;
+    }
+    .scenario {
+      background: #f4f9ff;
+      border-radius: 20px;
+      padding: 12px;
+      margin-bottom: 20px;
+      border: 1px solid #bdd4f0;
+      transition: 0.1s;
+    }
+    .scenario.correct-scenario {
+      background: #e0f7e8;
+      border-left: 6px solid #2e7d32;
+    }
+    .scenario.wrong-scenario {
+      background: #ffe6e5;
+      border-left: 6px solid #c62828;
+    }
+    .scenario-buttons {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+    }
+    .scenario-buttons button {
+      background: #d4e3fd;
+      color: #0059b3;
+    }
+    .scenario-buttons button.active-choice {
+      background: #1e6ec5;
+      color: white;
+    }
+    .scenario-buttons button.correct-highlight {
+      background: #2e7d32 !important;
+      color: white !important;
+      box-shadow: 0 0 0 2px #a5d6a7;
+    }
+    .scenario-buttons button.wrong-highlight {
+      background: #c62828 !important;
+      color: white !important;
+      box-shadow: 0 0 0 2px #ffcdd2;
+    }
+    .scenario-feedback {
+      font-size: 0.7rem;
+      margin-top: 8px;
+      padding: 5px 8px;
+      border-radius: 20px;
+      display: inline-block;
+    }
+    .reflection-box {
+      background: #e9f2fa;
+      border-radius: 28px;
+      padding: 16px;
+      margin-top: 10px;
+      margin-bottom: 15px;
+      border: 1px solid #79b9f0;
+    }
+    footer {
+      font-size: 0.6rem;
+      text-align: center;
+      padding: 8px;
+      background: #f4faff;
+      border-top: 1px solid #cde2fe;
+      color: #3a6d8c;
+    }
+    .progress-badge {
+      background: #d4e3fd;
+      border-radius: 40px;
+      padding: 5px 12px;
+      font-size: 0.75rem;
+      font-weight: bold;
+      display: inline-block;
+    }
+    .assigned-list {
+      font-size: 0.7rem;
+      max-height: 140px;
+      overflow-y: auto; /* оставляем внутреннюю прокрутку только для списков, это не мешает */
+    }
+    .assigned-item {
+      background: #e3f0ff;
+      border-radius: 30px;
+      padding: 6px 10px;
+      margin: 4px 0;
+      font-size: 0.68rem;
+      border-left: 3px solid #1f78cf;
+    }
+    .assigned-item.wrong {
+      background: #ffe0e0;
+      border-left-color: #d32f2f;
+    }
+    .dropzone {
+      background: #f0f7fe;
+      border-radius: 24px;
+      padding: 12px 10px;
+      flex: 1;
+      min-height: 180px;
+      border: 2px dashed #6eb1e0;
+    }
+    .drag-card {
+      background: white;
+      border-left: 8px solid #2c7cd4;
+      padding: 18px 14px;
+      border-radius: 28px;
+      box-shadow: 0 8px 18px rgba(0, 0, 0, 0.05);
+      font-size: 0.9rem;
+      cursor: grab;
+    }
+    .zones-row {
+      display: flex;
+      gap: 14px;
+      margin: 15px 0;
+    }
+    .current-card-area {
+      background: #f4faff;
+      border-radius: 28px;
+      padding: 12px;
+      text-align: center;
+      border: 2px solid #aacbf5;
+    }
+  </style>
+</head>
+<body>
+<div class="dispatcher-card">
+  <div class="header">
+    <h2>🚨 Диспетчер ОПО: Зафиксировать инцидент</h2>
+    <p>выяви маркеры инцидента | ОПО</p>
+  </div>
+  <div class="level-tabs" id="tabBar">
+    <button class="tab-btn active" data-level="1">📋 Уровень 1 <br><span style="font-size:0.65rem;">Сортировка</span></button>
+    <button class="tab-btn" data-level="2">🔍 Уровень 2 <br><span style="font-size:0.65rem;">Найди три слова</span></button>
+    <button class="tab-btn" data-level="3">⚠️ Уровень 3 <br><span style="font-size:0.65rem;">Симулятор ошибок</span></button>
+  </div>
+  <div class="content-scroll" id="mainContent">
+    <!-- УРОВЕНЬ 1 -->
+    <div id="level1" class="level active-level">
+      <div class="message-feedback">
+        🃏 <strong>Стопка ситуаций</strong>: перетащите текущую карточку в зону «Инцидент» или «Не инцидент / Авария». Всего 5 карточек.
+      </div>
+      <div class="level1-layout">
+        <div class="current-card-area">
+          <h4 style="margin:0 0 10px 0;">📇 Текущая карточка (перетащи)</h4>
+          <div id="draggableCardContainer"></div>
+          <div class="progress-badge" id="queueProgress">Осталось карточек: 5</div>
+        </div>
+        <div class="zones-row">
+          <div class="dropzone" id="incidentZoneL1" data-zone="incident">
+            <h4>✅ ИНЦИДЕНТ</h4>
+            <div id="incidentList" class="assigned-list"></div>
+          </div>
+          <div class="dropzone" id="nonIncidentZoneL1" data-zone="nonIncident">
+            <h4>❌ НЕ ИНЦИДЕНТ / АВАРИЯ</h4>
+            <div id="nonIncidentList" class="assigned-list"></div>
+          </div>
+        </div>
+        <div class="flex-btns">
+          <button id="resetLevel1Btn">🔄 Сбросить уровень</button>
+          <button id="checkLevel1Btn">📊 Завершить и проверить</button>
+        </div>
+        <div id="level1Feedback" class="message-feedback" style="display:none;"></div>
+      </div>
+    </div>
+
+    <!-- УРОВЕНЬ 2 -->
+    <div id="level2" class="level">
+      <div class="message-feedback">
+        🧠 Кликни на <strong>ТРИ правильные ключевые фразы</strong>, которые доказывают инцидент (отказ + отсутствие вреда). Избегай фраз-ловушек (розовый фон)!
+      </div>
+      <div id="textForClick" style="background:#f7faff; border-radius: 24px; padding: 18px; line-height: 1.7; border:1px solid #bcd9ff; font-size:0.95rem;"></div>
+      <div style="margin: 15px 0; display: flex; justify-content: space-between; align-items:center;">
+        <span class="badge" id="clickCounter">🔘 Выбрано: 0 / 3</span>
+        <button id="resetLevel2Btn">🧹 Очистить выбор</button>
+      </div>
+      <button id="checkLevel2Btn" style="width:100%;">📢 Проверить уровень 2</button>
+      <div id="level2Feedback" class="message-feedback" style="display:none;"></div>
+    </div>
+
+    <!-- УРОВЕНЬ 3 -->
+    <div id="level3" class="level">
+      <div class="message-feedback">
+        ⚡ 3 сообщения подряд. Реши: заводить расследование инцидента? (ДА / НЕТ)
+      </div>
+      <div id="scenariosContainer"></div>
+      <button id="checkLevel3Btn" style="width:100%; margin-top: 10px;">🎯 Проверить решения</button>
+      <div id="level3Feedback" class="message-feedback" style="display:none;"></div>
+    </div>
+
+    <div id="reflectionBlock" style="display:none;"></div>
+  </div>
+  <footer>⚙️ Инцидент = отказ/разгерметизация + нет вреда людям и экологии</footer>
+</div>
+
+<script>
+  // ---------- УРОВЕНЬ 1 ----------
+  const cardsQueue = [
+    { id: 1, text: "📌 В котельной давление упало на 0.3 атм, автоматика отключила горелку. Перезапустили. Люди целы.", correctZone: "incident" },
+    { id: 2, text: "⚠️ Склад аммиака: оператор ошибся, клапан открылся, 5 кг аммиака вышло. Жертв нет.", correctZone: "incident" },
+    { id: 3, text: "🏗️ Кран уронил трубу. Никто не пострадал. Кран исправен.", correctZone: "nonIncident" },
+    { id: 4, text: "💥 Взорвался газовый баллон в котельной. Выбило стекла, оператор получил ожог I степени.", correctZone: "nonIncident" },
+    { id: 5, text: "📊 Вибрация выше нормы на насосе ВД. Сработала защита, насос отключился. Дефект вала.", correctZone: "incident" }
+  ];
+  let remainingCards = [];
+  let userResponses = [];
+  let currentCardObj = null;
+  let draggedCardElement = null;
+  const draggableContainer = document.getElementById('draggableCardContainer');
+  const incidentListDiv = document.getElementById('incidentList');
+  const nonIncidentListDiv = document.getElementById('nonIncidentList');
+  const queueProgressSpan = document.getElementById('queueProgress');
+  const level1FeedbackDiv = document.getElementById('level1Feedback');
+
+  function updateQueueProgress() { queueProgressSpan.innerText = `Осталось карточек: ${remainingCards.length}`; }
+  function renderAssignedLists() {
+    incidentListDiv.innerHTML = ''; nonIncidentListDiv.innerHTML = '';
+    userResponses.forEach(resp => {
+      const cardOriginal = cardsQueue.find(c => c.id === resp.cardId);
+      if (!cardOriginal) return;
+      const itemDiv = document.createElement('div'); itemDiv.className = 'assigned-item';
+      if (!resp.isCorrect) itemDiv.classList.add('wrong');
+      itemDiv.innerText = cardOriginal.text.substring(0, 70) + (cardOriginal.text.length > 70 ? '…' : '');
+      if (!resp.isCorrect) itemDiv.title = `Ошибка! Правильная зона: ${resp.targetZone === 'incident' ? 'Инцидент' : 'Не инцидент'}`;
+      if (resp.targetZone === 'incident') incidentListDiv.appendChild(itemDiv);
+      else nonIncidentListDiv.appendChild(itemDiv);
+    });
+  }
+  function createDraggableCard(cardObj) {
+    const cardDiv = document.createElement('div');
+    cardDiv.className = 'drag-card';
+    cardDiv.setAttribute('data-id', cardObj.id);
+    cardDiv.innerText = cardObj.text;
+    cardDiv.setAttribute('draggable', 'true');
+    cardDiv.addEventListener('dragstart', (e) => {
+      draggedCardElement = cardDiv;
+      e.dataTransfer.setData('text/plain', cardObj.id);
+      e.dataTransfer.effectAllowed = 'move';
+      cardDiv.style.opacity = '0.5';
+    });
+    cardDiv.addEventListener('dragend', () => { draggedCardElement = null; cardDiv.style.opacity = '1'; });
+    return cardDiv;
+  }
+  function finalizeCurrentCard(targetZoneId) {
+    if (!currentCardObj) return false;
+    const targetZone = (targetZoneId === 'incidentZoneL1') ? 'incident' : 'nonIncident';
+    const isCorrect = (currentCardObj.correctZone === targetZone);
+    userResponses.push({ cardId: currentCardObj.id, targetZone: targetZone, isCorrect: isCorrect });
+    renderAssignedLists();
+    currentCardObj = null;
+    if (remainingCards.length > 0) loadNextCard();
+    else draggableContainer.innerHTML = '<div style="padding:20px; text-align:center; background:#e1f0fe; border-radius:26px;">✅ Все карточки распределены! Нажмите «Завершить и проверить».</div>';
+    updateQueueProgress();
+    return true;
+  }
+  function loadNextCard() {
+    if (remainingCards.length === 0) return;
+    const nextCard = remainingCards.shift();
+    currentCardObj = nextCard;
+    draggableContainer.innerHTML = '';
+    draggableContainer.appendChild(createDraggableCard(nextCard));
+    updateQueueProgress();
+  }
+  function resetLevel1() {
+    remainingCards = cardsQueue.map(c => ({ ...c }));
+    userResponses = [];
+    currentCardObj = null;
+    renderAssignedLists();
+    level1FeedbackDiv.style.display = 'none';
+    loadNextCard();
+    localStorage.removeItem('level1_completed');
+    updateTabCompletion();
+  }
+  function checkLevel1() {
+    if (remainingCards.length > 0) { level1FeedbackDiv.style.display = 'block'; level1FeedbackDiv.innerHTML = '⚠️ Распределите все карточки!'; return false; }
+    if (userResponses.length !== cardsQueue.length) { level1FeedbackDiv.style.display = 'block'; level1FeedbackDiv.innerHTML = '❌ Не все карточки обработаны.'; return false; }
+    const correctCount = userResponses.filter(r => r.isCorrect).length;
+    if (correctCount === cardsQueue.length) {
+      level1FeedbackDiv.style.display = 'block'; level1FeedbackDiv.innerHTML = '🎉 Отлично! Уровень 1 пройден!';
+      localStorage.setItem('level1_completed', 'true'); updateTabCompletion(); return true;
+    } else {
+      level1FeedbackDiv.style.display = 'block'; level1FeedbackDiv.innerHTML = `⚠️ Ошибок: ${cardsQueue.length - correctCount}. Сбросьте и попробуйте снова.`;
+      return false;
+    }
+  }
+  function setupLevel1DropZones() {
+    const incidentZone = document.getElementById('incidentZoneL1');
+    const nonIncidentZone = document.getElementById('nonIncidentZoneL1');
+    const dropHandler = (e) => { e.preventDefault(); if (draggedCardElement && currentCardObj) finalizeCurrentCard(e.currentTarget.id); draggedCardElement = null; };
+    incidentZone.addEventListener('dragover', e => e.preventDefault()); nonIncidentZone.addEventListener('dragover', e => e.preventDefault());
+    incidentZone.addEventListener('drop', dropHandler); nonIncidentZone.addEventListener('drop', dropHandler);
+  }
+
+  // ---------- УРОВЕНЬ 2 ----------
+  const baseText = "В 15:30 на реакторе отказал предохранительный клапан (заклинило в закрытом положении). Резко выросло давление. Автоматика аварийно остановила процесс. Никто из 5 рабочих не пострадал. Течь отсутствует.";
+  const correctPhrasesList = [
+    { phrase: "отказал предохранительный клапан", correct: true },
+    { phrase: "выросло давление", correct: true },
+    { phrase: "не пострадал", correct: true }
+  ];
+  const trapPhrases = [
+    { phrase: "заклинило", correct: false },
+    { phrase: "автоматика аварийно остановила", correct: false },
+    { phrase: "течь отсутствует", correct: false }
+  ];
+  let allClickableItems = [...correctPhrasesList, ...trapPhrases];
+  let selectedItems = [];
+
+  function buildLevel2Text() {
+    const container = document.getElementById('textForClick');
+    container.innerHTML = '';
+    let text = baseText;
+    let sorted = [...allClickableItems].sort((a,b) => b.phrase.length - a.phrase.length);
+    let positions = [];
+    sorted.forEach(item => {
+      let idx = text.indexOf(item.phrase);
+      while (idx !== -1) {
+        positions.push({ start: idx, end: idx + item.phrase.length, item });
+        idx = text.indexOf(item.phrase, idx + 1);
+      }
+    });
+    positions.sort((a,b) => a.start - b.start);
+    let filtered = [];
+    for (let i=0; i<positions.length; i++) {
+      if (filtered.length && filtered[filtered.length-1].end > positions[i].start) continue;
+      filtered.push(positions[i]);
+    }
+    let cursor = 0;
+    filtered.forEach(pos => {
+      if (cursor < pos.start) container.appendChild(document.createTextNode(text.substring(cursor, pos.start)));
+      const span = document.createElement('span');
+      span.className = 'click-word';
+      if (!pos.item.correct) span.classList.add('trap');
+      span.textContent = pos.item.phrase;
+      span.setAttribute('data-phrase', pos.item.phrase);
+      span.setAttribute('data-correct', pos.item.correct);
+      span.addEventListener('click', (e) => {
+        const phrase = span.getAttribute('data-phrase');
+        const isCorrect = span.getAttribute('data-correct') === 'true';
+        const existing = selectedItems.find(s => s.phrase === phrase);
+        if (existing) {
+          span.classList.remove('selected');
+          selectedItems = selectedItems.filter(s => s.phrase !== phrase);
+        } else {
+          if (selectedItems.length >= 3) {
+            const fb = document.getElementById('level2Feedback');
+            fb.style.display = 'block';
+            fb.innerHTML = '⚠️ Можно выбрать только 3 ключевых слова. Сначала сбросьте или уберите лишнее.';
+            setTimeout(() => { if(fb) fb.style.display = 'none'; }, 1800);
+            return;
+          }
+          span.classList.add('selected');
+          selectedItems.push({ phrase, correct: isCorrect });
+        }
+        document.getElementById('clickCounter').innerHTML = `🔘 Выбрано: ${selectedItems.length} / 3`;
+      });
+      container.appendChild(span);
+      cursor = pos.end;
+    });
+    if (cursor < text.length) container.appendChild(document.createTextNode(text.substring(cursor)));
+  }
+
+  function resetLevel2() {
+    document.querySelectorAll('#textForClick .click-word').forEach(span => span.classList.remove('selected'));
+    selectedItems = [];
+    document.getElementById('clickCounter').innerHTML = `🔘 Выбрано: 0 / 3`;
+    document.getElementById('level2Feedback').style.display = 'none';
+  }
+
+  function checkLevel2() {
+    if (selectedItems.length !== 3) {
+      document.getElementById('level2Feedback').style.display = 'block';
+      document.getElementById('level2Feedback').innerHTML = '❌ Выберите ровно три ключевые фразы. Сейчас выбрано ' + selectedItems.length;
+      return false;
+    }
+    const allCorrect = selectedItems.every(item => item.correct === true);
+    if (allCorrect && selectedItems.length === 3) {
+      document.getElementById('level2Feedback').style.display = 'block';
+      document.getElementById('level2Feedback').innerHTML = '✅ Отлично! Вы выбрали верные маркеры. Уровень 2 пройден.';
+      localStorage.setItem('level2_completed', 'true');
+      updateTabCompletion();
+      return true;
+    } else {
+      document.getElementById('level2Feedback').style.display = 'block';
+      document.getElementById('level2Feedback').innerHTML = `❌ Ошибка: выбраны фразы-ловушки. Нужны только: "отказал предохранительный клапан", "выросло давление", "не пострадал".`;
+      return false;
+    }
+  }
+
+  // ---------- УРОВЕНЬ 3 ----------
+  const scenarios = [
+    { id: 'A', text: 'Ситуация А. Оператор запнулся и рукой сломал рычаг управления. Механизм встал. Никто не ранен.', correct: 'yes' },
+    { id: 'B', text: 'Ситуация Б. Из-за износа лопнул болт на ограждении вентилятора. Ограждение упало на пол. Станок работал.', correct: 'no' },
+    { id: 'C', text: 'Ситуация В. Упала опора ЛЭП на территории ОПО. Свет мигнул, генератор включился. Люди живы.', correct: 'yes' }
+  ];
+  let userAnswers = { A: null, B: null, C: null };
+  let level3Checked = false;
+
+  function renderLevel3() {
+    const container = document.getElementById('scenariosContainer');
+    container.innerHTML = '';
+    scenarios.forEach(sc => {
+      const div = document.createElement('div'); 
+      div.className = 'scenario';
+      div.setAttribute('data-id', sc.id);
+      div.innerHTML = `<p>${sc.text}</p><div class="scenario-buttons"><button data-sc="${sc.id}" data-ans="yes">✅ ДА — расследовать</button><button data-sc="${sc.id}" data-ans="no">❌ НЕТ — не инцидент</button></div>
+                       <div class="scenario-feedback" style="display:none;"></div>`;
+      container.appendChild(div);
+      const btns = div.querySelectorAll('button');
+      btns.forEach(btn => {
+        btn.addEventListener('click', () => {
+          if (level3Checked) {
+            level3Checked = false;
+            document.getElementById('level3Feedback').style.display = 'none';
+            document.querySelectorAll('.scenario').forEach(scEl => {
+              scEl.classList.remove('correct-scenario', 'wrong-scenario');
+              scEl.querySelectorAll('.scenario-buttons button').forEach(b => {
+                b.classList.remove('correct-highlight', 'wrong-highlight');
+              });
+              const fbDiv = scEl.querySelector('.scenario-feedback');
+              if(fbDiv) fbDiv.style.display = 'none';
+            });
+          }
+          const scId = btn.getAttribute('data-sc');
+          const answer = btn.getAttribute('data-ans');
+          userAnswers[scId] = answer;
+          div.querySelectorAll('button').forEach(b => b.classList.remove('active-choice'));
+          btn.classList.add('active-choice');
+          const fbDiv = div.querySelector('.scenario-feedback');
+          if(fbDiv) fbDiv.style.display = 'none';
+        });
+      });
+    });
+  }
+
+  function applyColorFeedback() {
+    let allCorrectCount = 0;
+    scenarios.forEach(sc => {
+      const scDiv = document.querySelector(`.scenario[data-id="${sc.id}"]`);
+      if (!scDiv) return;
+      const userChoice = userAnswers[sc.id];
+      const isCorrect = (userChoice === sc.correct);
+      if (isCorrect) allCorrectCount++;
+      scDiv.classList.remove('correct-scenario', 'wrong-scenario');
+      if (isCorrect) scDiv.classList.add('correct-scenario');
+      else scDiv.classList.add('wrong-scenario');
+      
+      const btns = scDiv.querySelectorAll('.scenario-buttons button');
+      btns.forEach(btn => {
+        btn.classList.remove('correct-highlight', 'wrong-highlight');
+        const ans = btn.getAttribute('data-ans');
+        if (ans === sc.correct) {
+          btn.classList.add('correct-highlight');
+        }
+        if (userChoice === ans && userChoice !== sc.correct) {
+          btn.classList.add('wrong-highlight');
+        }
+      });
+      
+      let feedbackDiv = scDiv.querySelector('.scenario-feedback');
+      if (!feedbackDiv) {
+        feedbackDiv = document.createElement('div');
+        feedbackDiv.className = 'scenario-feedback';
+        scDiv.appendChild(feedbackDiv);
+      }
+      feedbackDiv.style.display = 'block';
+      if (isCorrect) {
+        feedbackDiv.innerHTML = '✅ Верно!';
+        feedbackDiv.style.color = '#1b5e20';
+        feedbackDiv.style.background = '#e8f5e9';
+      } else {
+        let correctAnswerText = (sc.correct === 'yes') ? 'ДА (расследовать)' : 'НЕТ (не инцидент)';
+        feedbackDiv.innerHTML = `❌ Ошибка. Правильный ответ: ${correctAnswerText}.`;
+        feedbackDiv.style.color = '#b71c1c';
+        feedbackDiv.style.background = '#ffebee';
+      }
+      feedbackDiv.style.padding = '4px 12px';
+      feedbackDiv.style.borderRadius = '24px';
+      feedbackDiv.style.marginTop = '8px';
+      feedbackDiv.style.fontSize = '0.7rem';
+    });
+    return allCorrectCount;
+  }
+
+  function checkLevel3() {
+    const allAnswered = scenarios.every(sc => userAnswers[sc.id] !== null);
+    if (!allAnswered) {
+      document.getElementById('level3Feedback').style.display = 'block';
+      document.getElementById('level3Feedback').innerHTML = '⚠️ Ответьте на все три ситуации (ДА / НЕТ).';
+      return false;
+    }
+    const correctCount = scenarios.filter(sc => userAnswers[sc.id] === sc.correct).length;
+    applyColorFeedback();
+    level3Checked = true;
+    const totalMsg = document.getElementById('level3Feedback');
+    totalMsg.style.display = 'block';
+    if (correctCount === 3) {
+      totalMsg.innerHTML = '🎯 Блестяще! Все решения верны. Уровень 3 пройден!';
+      localStorage.setItem('level3_completed', 'true');
+      updateTabCompletion();
+      showReflectionAndBonus();
+      return true;
+    } else {
+      totalMsg.innerHTML = `⚠️ Ошибок: ${3 - correctCount}. Посмотрите на подсветку ситуаций (красный фон — ошибка). Исправьте ответы и нажмите «Проверить» снова.`;
+      localStorage.removeItem('level3_completed');
+      updateTabCompletion();
+      return false;
+    }
+  }
+
+  function showReflectionAndBonus() {
+    const refDiv = document.getElementById('reflectionBlock');
+    refDiv.style.display = 'block';
+    refDiv.innerHTML = `
+      <div class="reflection-box">
+        <h4>📋 Чек-лист диспетчера «Три признака инцидента»</h4>
+        <ul><li>🔧 Разрушилось сооружение / сломался механизм ОПО либо сбился режим.</li>
+        <li>💨 Разгерметизация / короткое замыкание (взрывопожароопасность).</li>
+        <li>🩺 Здоровью людей и экологии ущерба НЕТ.</li></ul>
+        <p><strong>✨ Секретный бонус:</strong> «Смертельно», «госпитализация», «экологический ущерб» — это АВАРИЯ. Инцидент = «почти авария» или поломка без последствий.</p>
+      </div>
+    `;
+  }
+
+  function updateTabCompletion() {
+    const l1 = localStorage.getItem('level1_completed') === 'true';
+    const l2 = localStorage.getItem('level2_completed') === 'true';
+    const l3 = localStorage.getItem('level3_completed') === 'true';
+    const tabs = document.querySelectorAll('.tab-btn');
+    if(l1) tabs[0].classList.add('completed'); else tabs[0].classList.remove('completed');
+    if(l2) tabs[1].classList.add('completed'); else tabs[1].classList.remove('completed');
+    if(l3) tabs[2].classList.add('completed'); else tabs[2].classList.remove('completed');
+    if(l1 && l2 && l3) showReflectionAndBonus();
+  }
+  function switchLevel(levelNum) {
+    document.querySelectorAll('.level').forEach(lvl => lvl.classList.remove('active-level'));
+    document.getElementById(`level${levelNum}`).classList.add('active-level');
+    document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('active'));
+    document.querySelector(`.tab-btn[data-level="${levelNum}"]`).classList.add('active');
+  }
+
+  // Инициализация
+  function init() {
+    resetLevel1();
+    setupLevel1DropZones();
+    document.getElementById('resetLevel1Btn').addEventListener('click', resetLevel1);
+    document.getElementById('checkLevel1Btn').addEventListener('click', checkLevel1);
+    buildLevel2Text();
+    document.getElementById('resetLevel2Btn').addEventListener('click', resetLevel2);
+    document.getElementById('checkLevel2Btn').addEventListener('click', checkLevel2);
+    renderLevel3();
+    document.getElementById('checkLevel3Btn').addEventListener('click', checkLevel3);
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => switchLevel(parseInt(btn.getAttribute('data-level'))));
+    });
+    updateTabCompletion();
+  }
+  init();
+</script>
+</body>
+</html>
